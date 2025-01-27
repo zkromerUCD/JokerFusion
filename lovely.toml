@@ -181,6 +181,8 @@ elseif self.children.front then
 	self.children.front.fire_card = nil
 end'''
 match_indent = true
+# TODO ADD STENCIL = TRUE TO CREATE CANVAS IN GAME.LUA
+
 # ...This part has actually been much better than the graphics...
 # Fire Card removal
 [[patches]]
