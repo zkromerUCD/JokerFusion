@@ -1,0 +1,204 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 2147483647
+
+# Wet Mime
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = "table.sort(scoring_hand, function (a, b) return a.T.x < b.T.x end )"
+position = "after"
+payload = '''if next(SMODS.find_card('j_fus_wet_mime')) then
+	for i = 1, #G.hand.cards do
+		if not G.hand.cards[i].config.center.unhighlightable then
+			table.insert(scoring_hand, G.hand.cards[i])
+		end
+	end
+end'''
+match_indent = true
+
+
+# Hell
+# I swear to god, any of the actuall card effect tasks are easier than the graphical efforts to remove the parts of the fire card that go off of the card
+# like i cannot even, this was the hardest thing ever (probably)
+# HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+# Fire Card graphics part 1
+[[patches]]
+[patches.pattern]
+target = "engine/sprite.lua"
+pattern = "love.graphics.setShader( G.SHADERS[_shader or 'dissolve'],  G.SHADERS[_shader or 'dissolve'])"
+position = "after"
+payload = '''self.draw_major = _draw_major
+self.fire_card_send = _send
+self.fire_card_shader = _shader or "dissolve"
+'''
+match_indent = true
+# Fire Card graphics part 2
+[[patches]]
+[patches.pattern]
+target = "engine/sprite.lua"
+pattern = '''else 
+    self:draw_self()
+end'''
+position = "after"
+payload = "self.fire_card_shader = nil"
+match_indent = true
+# Fire Card graphics part 3
+[[patches]]
+[patches.pattern]
+target = "engine/sprite.lua"
+pattern = "love.graphics.setColor(overlay or G.BRUTE_OVERLAY or G.C.WHITE)"
+position = "after"
+payload = '''if self.fire_card then
+	local mask_effect = love.graphics.newShader[[
+		#if defined(VERTEX) || __VERSION__ > 100 || defined(GL_FRAGMENT_PRECISION_HIGH)
+			#define PRECISION highp
+		#else
+			#define PRECISION mediump
+		#endif
+	
+		// Values of this variable:
+		// self.ARGS.send_to_shader[1] = math.min(self.VT.r*3, 1) + (math.sin(G.TIMERS.REAL/28) + 1) + (self.juice and self.juice.r*20 or 0) + self.tilt_var.amt
+		// self.ARGS.send_to_shader[2] = G.TIMERS.REAL
+		// extern PRECISION vec2 mask_effect;
+		
+		#ifdef PIXEL
+		vec4 effect (vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords) {
+			if (Texel(texture, texture_coords).rgb == vec3(1.0)) {
+				// a discarded pixel wont be applied as the stencil.
+				discard;
+			}
+			return vec4(1.0);
+		}
+		#endif
+		
+		// for transforming the card while your mouse is on it
+		extern PRECISION vec2 mouse_screen_pos;
+		extern PRECISION float hovering;
+		extern PRECISION float screen_scale;
+		extern  mat4 transform_projection;
+		
+		#ifdef VERTEX
+		vec4 position( mat4 transform_projection, vec4 vertex_position )
+		{
+			if (hovering <= 0.){
+				return transform_projection * vertex_position;
+			}
+			float mid_dist = length(vertex_position.xy - 0.5*love_ScreenSize.xy)/length(love_ScreenSize.xy);
+			vec2 mouse_offset = (vertex_position.xy - mouse_screen_pos.xy)/screen_scale;
+			float scale = 0.2*(-0.03 - 0.3*max(0., 0.3-mid_dist))
+						*hovering*(length(mouse_offset)*length(mouse_offset))/(2. -mid_dist);
+
+			return transform_projection * vertex_position + vec4(0,0,0,scale);
+		}
+		#endif
+	]]
+	
+	stencil_function = function()
+		_draw_major = self.draw_major
+		mask_effect:send('mouse_screen_pos', self.ARGS.prep_shader.cursor_pos)
+		mask_effect:send('screen_scale', G.TILESCALE*G.TILESIZE*(_draw_major.mouse_damping or 1)*G.CANV_SCALE)
+		mask_effect:send('hovering',((_shadow_height  and not tilt_shadow) or _no_tilt) and 0 or (_draw_major.hover_tilt or 0)*(tilt_shadow or 1))
+		-- mask_effect:send("dissolve",math.abs(_draw_major.dissolve or 0))
+		-- mask_effect:send("time",123.33412*(_draw_major.ID/1.14212 or 12.5123152)%3000)
+		-- mask_effect:send("texture_details",self:get_pos_pixel())
+		-- mask_effect:send("image_details",self:get_image_dims())
+		-- mask_effect:send("burn_colour_1",_draw_major.dissolve_colours and _draw_major.dissolve_colours[1] or G.C.CLEAR)
+		-- mask_effect:send("burn_colour_2",_draw_major.dissolve_colours and _draw_major.dissolve_colours[2] or G.C.CLEAR)
+		-- mask_effect:send("shadow",(not not _shadow_height))
+		-- mask_effect:send("card_back", G.ASSET_ATLAS['fus_Enhancements'].image)
+		if self.fire_card_send then
+			-- mask_effect:send('mask_effect', self.fire_card_send)
+		end
+		love.graphics.setShader(mask_effect)
+		if self.video then 
+			self.video_dims = self.video_dims or {
+				w = self.video:getWidth(),
+				h = self.video:getHeight(),
+			}
+			love.graphics.draw(
+				G.ASSET_ATLAS['fus_Enhancement_Fire_Mask'].image,
+				0 ,0,
+				0,
+				self.VT.w/(self.T.w)/(self.video_dims.w/self.scale.x),
+				self.VT.h/(self.T.h)/(self.video_dims.h/self.scale.y)
+			)
+		else
+			love.graphics.draw(
+				G.ASSET_ATLAS['fus_Enhancement_Fire_Mask'].image,
+				0 ,0,
+				0,
+				self.VT.w/(self.T.w),
+				self.VT.h/(self.T.h)
+			)
+		end
+		_send =  self.fire_card_send
+		_shader = self.fire_card_shader
+		G.SHADERS[_shader or 'dissolve']:send('mouse_screen_pos', self.ARGS.prep_shader.cursor_pos)
+		G.SHADERS[_shader or 'dissolve']:send('screen_scale', G.TILESCALE*G.TILESIZE*(_draw_major.mouse_damping or 1)*G.CANV_SCALE)
+		G.SHADERS[_shader or 'dissolve']:send('hovering',((_shadow_height  and not tilt_shadow) or _no_tilt) and 0 or (_draw_major.hover_tilt or 0)*(tilt_shadow or 1))
+		G.SHADERS[_shader or 'dissolve']:send("dissolve",math.abs(_draw_major.dissolve or 0))
+		G.SHADERS[_shader or 'dissolve']:send("time",123.33412*(_draw_major.ID/1.14212 or 12.5123152)%3000)
+		G.SHADERS[_shader or 'dissolve']:send("texture_details",self:get_pos_pixel())
+		G.SHADERS[_shader or 'dissolve']:send("image_details",self:get_image_dims())
+		G.SHADERS[_shader or 'dissolve']:send("burn_colour_1",_draw_major.dissolve_colours and _draw_major.dissolve_colours[1] or G.C.CLEAR)
+		G.SHADERS[_shader or 'dissolve']:send("burn_colour_2",_draw_major.dissolve_colours and _draw_major.dissolve_colours[2] or G.C.CLEAR)
+		G.SHADERS[_shader or 'dissolve']:send("shadow",(not not _shadow_height))
+		if _send then 
+			G.SHADERS[_shader or 'dissolve']:send((SMODS.Shaders[_shader or 'dissolve'] and SMODS.Shaders[_shader or 'dissolve'].original_key) or _shader,_send)
+		end
+		love.graphics.setShader( G.SHADERS[_shader or 'dissolve'],  G.SHADERS[_shader or 'dissolve'])
+	end
+	love.graphics.stencil(stencil_function, "replace", 1, true)
+	-- Only allow rendering on pixels which have a stencil value greater than 0.
+	love.graphics.setStencilTest("greater", 0)
+end
+'''
+match_indent = true
+# RABID BARKING
+# BARK BARK WOOF WOOF GRRR I HATE FIRE CARDS
+# ...Fire Card graphics part 4
+[[patches]]
+[patches.pattern]
+target = "engine/sprite.lua"
+pattern = "if self.shader_tab then love.graphics.setShader() end"
+position = "after"
+payload = '''if self.fire_card then
+	love.graphics.setStencilTest()
+end'''
+match_indent = true
+# god DAMMIT i forgot card.lua
+# Fire Card graphics part 5
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = "if self.children.front and self.ability.effect ~= 'Stone Card' and not self.config.center.replace_base_card then"
+position = "before"
+payload = '''if self.config.center.key == 'm_fus_Fire' and self.children.front then
+	self.children.front.fire_card = true
+elseif self.children.front then
+	self.children.front.fire_card = nil
+end'''
+match_indent = true
+# ...This part has actually been much better than the graphics...
+# Fire Card removal
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = "if scoring_hand[i].ability.name == 'Glass Card' and not scoring_hand[i].debuff and pseudorandom('glass') < G.GAME.probabilities.normal/scoring_hand[i].ability.extra then "
+position = "before"
+payload = '''if scoring_hand[i].ability.name == 'Fire Card' then
+	if pseudorandom('fus_fire') < G.GAME.probabilities.normal/scoring_hand[i].ability.chance and not scoring_hand[i].ability.eternal then destroyed = true end
+end'''
+match_indent = true
+# Fire Card removal, cryptid edition
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = "if ((scoring_hand[i].ability.name == 'Glass Card' and not scoring_hand[i].debuff and pseudorandom('glass') < G.GAME.probabilities.normal/scoring_hand[i].ability.extra) or (G.GAME.modifiers.cry_shatter_rate and pseudorandom('cry_shatter') < 1/G.GAME.modifiers.cry_shatter_rate)) and not scoring_hand[i].ability.eternal then"
+position = "before"
+payload = '''if scoring_hand[i].ability.name == 'Fire Card' then
+	if pseudorandom('fus_fire') < G.GAME.probabilities.normal/scoring_hand[i].ability.chance and not scoring_hand[i].ability.eternal then destroyed = true end
+end'''
+match_indent = true

@@ -1,0 +1,13 @@
+{
+    "id": "JokerFusion",
+    "name": "Joker Fusion",
+    "author": ["Jesscapade", "Turtlemobile", "Onika", "TheZachk27"],
+    "description": "Adds fusion jokers and other stuff",
+    "prefix": "fus",
+    "main_file": "JokerFusion.lua",
+    "badge_colour": "c7638f",
+    "dependencies": [
+    
+    ],
+    "version": "0.0.1"
+}
