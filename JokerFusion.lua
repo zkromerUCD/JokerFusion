@@ -117,18 +117,7 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 6,
 	calculate = function(self, card, context)
-		if context.other_joker and context.other_joker.config.center.rarity == 1 and card ~= context.other_joker then
-			G.E_MANAGER:add_event(Event({
-				func = function()
-					context.other_joker:juice_up(0.5, 0.5)
-					return true
-				end
-			}))
-			return {
-				message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
-				Xmult_mod = card.ability.extra.xmult
-			}
-		end
+		
 	end	
 }
 ]]
@@ -251,6 +240,40 @@ if wet_mime_exists then
 end
 
 SMODS.Joker {
+	key = 'regicide',
+	loc_txt = {
+		name = 'Regicide',
+		text = {
+			"When a {C:attention}face{} card scores,",
+			"it is destroyed and this",
+			"joker gains +{X:mult,C:white}X#2# {} Mult.",
+			"(Currently {X:mult,C:white}X#1# {} Mult)"
+		}
+	},
+	config = { extra = { xmult = 1.0, xmult_increment = 0.25} }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.xmult, card.ability.extra.xmult_increment } }
+	end,
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.joker_main then
+			return {
+				message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
+				Xmult_mod = card.ability.extra.xmult
+			}
+		end
+		if context.destroying_card and context.destroying_card:is_face() and not context.blueprint then
+			card_eval_status_text(card, "extra", nil, nil, nil, { message = "Executed", colour = G.C.FILTER })
+			card.ability.extra.xmult = card.ability.extra.xmult + card.ability.extra.xmult_increment
+			return nil, true
+		end
+	end	
+}
+
+SMODS.Joker {
 	key = 'bench_player',
 	loc_txt = {
 		name = 'Bench Player',
@@ -304,6 +327,7 @@ SMODS.Joker {
 	calculate = function(self, card, context)
 		-- Add mult to each scored card
 		if context.individual and context.cardarea == G.play then
+			card_eval_status_text(card, "extra", nil, nil, nil, { message = "Dark Magic", colour = G.C.FILTER })
 			return {
 				message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
 				x_mult = card.ability.extra.xmult
@@ -312,8 +336,10 @@ SMODS.Joker {
 		
 		if context.buying_card and not context.retrigger_joker and not (context.card == card) then
 			if context.card.ability.set == "Joker" then
+				card_eval_status_text(card, "extra", nil, nil, nil, { message = "Material Expended", colour = G.C.FILTER })
 				G.E_MANAGER:add_event(Event({
 					func = function()
+						G.jokers:remove_card(context.card)
 						context.card:start_dissolve()
 						return true
 					end
@@ -374,6 +400,7 @@ SMODS.Joker {
 	
 	remove_from_deck = function(self, card, from_debuff)
 		if not from_debuff and self.name ~= "Blueprint" then
+			card_eval_status_text(card, "extra", nil, nil, nil, { message = "\"Die.\"", colour = G.C.FILTER })
 			G.GAME.round_resets.hands = -9999
 			G.GAME.round_resets.discards = -9999
 			G.GAME.current_round.hands_left = -9999
