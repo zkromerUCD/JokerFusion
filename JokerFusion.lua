@@ -113,7 +113,7 @@ SMODS.Joker {
 		return { vars = { card.ability.extra.xmult } }
 	end,
 	rarity = 2,
-	atlas = 'JokerFusion',
+	atlas = 'Gino',
 	pos = { x = 0, y = 0 },
 	cost = 6,
 	calculate = function(self, card, context)
@@ -183,10 +183,6 @@ SMODS.Joker {
 			"changes its rank."
 		}
 	},
-	config = { extra = { xmult = 1.25 } }, 
-	loc_vars = function(self, info_queue, card)
-		return { vars = { card.ability.extra.xmult } }
-	end,
 	rarity = 2,
 	atlas = 'Gino',
 	pos = { x = 0, y = 0 },
@@ -194,6 +190,7 @@ SMODS.Joker {
 	calculate = function(self, card, context)
 		if context.after then
 			for i, c in ipairs(context.scoring_hand) do
+				-- TODO: Add case for rankless and suitless cards (i.e. stone cards)
 				local rank = pseudorandom_element({'2','3','4','5','6','7','8','9','T','J','Q','K','A'}, pseudoseed('flubonacci'))
 				local suit_prefix = string.sub(c.base.suit, 1, 1)..'_'
 				c:set_base(G.P_CARDS[suit_prefix..rank])
@@ -257,7 +254,7 @@ SMODS.Joker {
 	rarity = 3,
 	atlas = 'Gino',
 	pos = { x = 0, y = 0 },
-	cost = 6,
+	cost = 8,
 	calculate = function(self, card, context)
 		if context.joker_main then
 			return {
@@ -304,6 +301,38 @@ SMODS.Joker {
 		end
 	end	
 }
+
+-- Missingno
+-- TODO: This one will be hard AF to implement
+SMODS.Joker {
+	key = 'smearedpainting',
+	loc_txt = {
+		name = 'Smeared Painting',
+		text = {
+			"All scored cards",
+			"become the suit of", 
+			"the first scored card."
+		}
+	},
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 8,
+	calculate = function(self, card, context)
+		if context.after and context.scoring_hand then
+			local suit_prefix = string.sub(context.scoring_hand[1].base.suit, 1, 1)..'_'
+			local high_ranks = {[10] = 'T', [11] = 'J', [12] = 'Q', [13] = 'K', [14] = 'A'}
+			for i, c in ipairs(context.scoring_hand) do
+				local rank = c:get_id()
+				if rank >= 10 then
+					rank = high_ranks[rank]
+				end
+				c:set_base(G.P_CARDS[suit_prefix..rank])
+			end
+		end
+	end	
+}
+
 
 SMODS.Joker {
 	key = 'silvervine',
