@@ -127,7 +127,7 @@ SMODS.Joker {
 	loc_txt = {
 		name = 'Handbelisk',
 		text = {
-			"Gains +{X:mult,C:white}X#1# {} mult each time",
+			"Gains {X:mult,C:white}X#1# {} mult each time",
 			"you play a hand of",
 			"different size. Resets when",
 			"you play two hands of the",
@@ -252,7 +252,7 @@ SMODS.Joker {
 		text = {
 			"When a {C:attention}face{} card scores,",
 			"it is destroyed and this",
-			"joker gains +{X:mult,C:white}X#2# {} Mult.",
+			"joker gains {X:mult,C:white}X#2# {} Mult.",
 			"(Currently {X:mult,C:white}X#1# {} Mult)"
 		}
 	},
@@ -271,7 +271,7 @@ SMODS.Joker {
 				Xmult_mod = card.ability.extra.xmult
 			}
 		end
-		if context.destroying_card and context.destroying_card:is_face() and not context.blueprint then
+		if context.destroying_card and context.destroying_card:is_face() and not context.blueprint and not context.destroying_card.ability.eternal then
 			card_eval_status_text(card, "extra", nil, nil, nil, { message = "Executed", colour = G.C.FILTER })
 			card.ability.extra.xmult = card.ability.extra.xmult + card.ability.extra.xmult_increment
 			return nil, true
@@ -359,8 +359,8 @@ SMODS.Joker {
 		text = {
 			"Each {C:attention}face{} card held",
 			"in has a #2# in #3# chance",
-			"to give this joker +{X:mult,C:white}#4# {} Mult",
-			"Currently {X:mult,C:white}#1# {} Mult."
+			"to give this joker {C:mult}+#4#{} Mult",
+			"Currently {C:mult}#1#{} Mult."
 		}
 	},
 	config = { extra = { mult = 0, mult_increment = 1, chance = 2 } }, 
@@ -380,18 +380,20 @@ SMODS.Joker {
 		if context.individual and context.cardarea == G.hand and not context.blueprint then
 			if context.other_card:is_face() then
 				if context.other_card.debuff then
-					return {
+					return
+					--[[return {
 						message = localize('k_debuffed'),
 						colour = G.C.RED,
 						card = context.other_card,
-					}
+					}]]
 				else
 					if pseudorandom("fus_metermaid") < G.GAME.probabilities.normal/card.ability.extra.chance then
 						card.ability.extra.mult = card.ability.extra.mult + card.ability.extra.mult_increment
+						my_card = card
 						return {
-							message = localize('k_upgrade_ex'),
+							message = "Joker upgraded!",
 							colour = G.C.MULT,
-							card = card
+							card = my_card
 						}
 					end
 				end
@@ -401,6 +403,45 @@ SMODS.Joker {
 				mult_mod = card.ability.extra.mult,
 				message = localize { type = 'variable', key = 'a_mult', vars = { card.ability.extra.mult } }
 			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
+	key = 'polaroid',
+	loc_txt = {
+		name = 'Polaroid',
+		text = {
+			"First played {C:attention}face {} card",
+			"gains {C:chips}+#1# {}chips when scored."
+		}
+	},
+	config = { extra = { chip_mod = 10 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.chip_mod } }
+	end,
+	rarity = 1,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 4,
+	calculate = function(self, card, context)
+		if context.individual and context.cardarea == G.play then
+			local first_face = nil
+			for i = 1, #context.scoring_hand do
+				if context.scoring_hand[i]:is_face() then first_face = context.scoring_hand[i]; break end
+			end
+			if context.other_card == first_face then
+				context.other_card.ability.perma_bonus = context.other_card.ability.perma_bonus or 0
+				context.other_card.ability.perma_bonus = context.other_card.ability.perma_bonus + card.ability.extra.chip_mod
+				return {
+					extra = {message = localize('k_upgrade_ex'), colour = G.C.CHIPS},
+					colour = G.C.CHIPS,
+					card = card
+				}
+			end
 		end
 	end,
 	set_badges = function(self, card, badges)
