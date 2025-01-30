@@ -171,7 +171,10 @@ SMODS.Joker {
 				}
 			end
 		end
-	end	
+	end,	
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 
 SMODS.Joker {
@@ -196,7 +199,10 @@ SMODS.Joker {
 				c:set_base(G.P_CARDS[suit_prefix..rank])
 			end
 		end
-	end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 
 -- Check if jens is enabled, if so, do not create wet mime
@@ -233,6 +239,9 @@ if wet_mime_exists then
 		atlas = 'Gino',
 		pos = { x = 0, y = 0 },
 		cost = 20,
+		set_badges = function(self, card, badges)
+			badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+		end,
 	}
 end
 
@@ -267,7 +276,10 @@ SMODS.Joker {
 			card.ability.extra.xmult = card.ability.extra.xmult + card.ability.extra.xmult_increment
 			return nil, true
 		end
-	end	
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 
 SMODS.Joker {
@@ -299,11 +311,15 @@ SMODS.Joker {
 				Xmult_mod = card.ability.extra.xmult
 			}
 		end
-	end	
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 
 -- Missingno
 -- TODO: This one will be hard AF to implement
+
 SMODS.Joker {
 	key = 'smearedpainting',
 	loc_txt = {
@@ -330,9 +346,67 @@ SMODS.Joker {
 				c:set_base(G.P_CARDS[suit_prefix..rank])
 			end
 		end
-	end	
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 
+SMODS.Joker {
+	key = 'metermaid',
+	loc_txt = {
+		name = 'Meter Maid',
+		text = {
+			"Each {C:attention}face{} card held",
+			"in has a #2# in #3# chance",
+			"to give this joker +{X:mult,C:white}#4# {} Mult",
+			"Currently {X:mult,C:white}#1# {} Mult."
+		}
+	},
+	config = { extra = { mult = 0, mult_increment = 1, chance = 2 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { 
+			card.ability.extra.mult,
+			(G.GAME.probabilities.normal or 1),
+			card.ability.extra.chance,
+			card.ability.extra.mult_increment
+		} }
+	end,
+	rarity = 1,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.individual and context.cardarea == G.hand and not context.blueprint then
+			if context.other_card:is_face() then
+				if context.other_card.debuff then
+					return {
+						message = localize('k_debuffed'),
+						colour = G.C.RED,
+						card = context.other_card,
+					}
+				else
+					if pseudorandom("fus_metermaid") < G.GAME.probabilities.normal/card.ability.extra.chance then
+						card.ability.extra.mult = card.ability.extra.mult + card.ability.extra.mult_increment
+						return {
+							message = localize('k_upgrade_ex'),
+							colour = G.C.MULT,
+							card = card
+						}
+					end
+				end
+			end
+		elseif context.joker_main then
+			return {
+				mult_mod = card.ability.extra.mult,
+				message = localize { type = 'variable', key = 'a_mult', vars = { card.ability.extra.mult } }
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
 
 SMODS.Joker {
 	key = 'silvervine',
@@ -442,15 +516,25 @@ SMODS.Joker {
 				end
 			end
 		end
-	end
+	end,
+	
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Lord of Goldpoint", G.C.BLACK, G.C.RED, 1.2 )
+ 	end,
 }
+
+-- Other non-fusion jokers will have custom badges as well, like "Unlucky Few", "Zenith" (Yuki has both), "Hallowleaves" or "Scourgebane"
+
 
 SMODS.Joker {
 	key = 'gino',
 	loc_txt = {
 		name = 'Gino Fratelli',
 		text = {
-			"WIP"
+			"WIP",
+			"",
+			"BRING HONOR TO",
+			"THE FRATELLI CLAN!!!"
 		}
 	},
 	config = { extra = { xmult = 1.25 } }, 
@@ -480,7 +564,10 @@ SMODS.Joker {
 		if not from_debuff then
 			play_sound("gino_die", 1, 1)
 		end
-	end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fettucine[sic] Alfredo", G.C.BLACK, G.C.WHITE, 1.2 )
+ 	end,
 }
 
 
