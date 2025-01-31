@@ -118,7 +118,10 @@ SMODS.Joker {
 	cost = 6,
 	calculate = function(self, card, context)
 		
-	end	
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
 }
 ]]
 
@@ -441,6 +444,42 @@ SMODS.Joker {
 					colour = G.C.CHIPS,
 					card = card
 				}
+			end
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
+	key = 'periodictablet',
+	loc_txt = {
+		name = 'Periodic Tablet',
+		text = {
+			"#1# in #2# chance to create",
+			"a tarot card when hand played",
+			"is not your most played hand."
+		}
+	},
+	config = { extra = { chance = 4 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { 
+			(G.GAME.probabilities.normal or 1),
+			card.ability.extra.chance, 
+		} }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.joker_main then
+			-- Check if hand is not most played
+			if TODO then
+				if pseudorandom("fus_periodictablet") < G.GAME.probabilities.normal/card.ability.extra.chance then
+					-- TODO
+				end
 			end
 		end
 	end,
