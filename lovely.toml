@@ -211,3 +211,83 @@ payload = '''if scoring_hand[i].ability.name == 'Fire Card' then
 	if pseudorandom('fus_fire') < G.GAME.probabilities.normal/scoring_hand[i].ability.chance and not scoring_hand[i].ability.eternal then destroyed = true end
 end'''
 match_indent = true
+
+# Perma mult initializer
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''self.ability = {
+        name = center.name,
+        effect = center.effect,
+        set = center.set,
+        mult = center.config.mult or 0,
+        h_mult = center.config.h_mult or 0,
+        h_x_mult = center.config.h_x_mult or 0,
+        h_dollars = center.config.h_dollars or 0,
+        p_dollars = center.config.p_dollars or 0,
+        t_mult = center.config.t_mult or 0,
+        t_chips = center.config.t_chips or 0,
+        x_mult = center.config.Xmult or 1,
+        h_size = center.config.h_size or 0,
+        d_size = center.config.d_size or 0,
+        extra = copy_table(center.config.extra) or nil,
+        extra_value = 0,
+        type = center.config.type or '',
+        order = center.order or nil,
+        forced_selection = self.ability and self.ability.forced_selection or nil,
+        perma_bonus = self.ability and self.ability.perma_bonus or 0, '''
+position = "after"
+payload = '''perma_mult = self.ability and self.ability.perma_mult or 0,'''
+match_indent = true
+# Perma mult display 1
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''loc_vars = { playing_card = not not self.base.colour, value = self.base.value, suit = self.base.suit, colour = self.base.colour,
+                    nominal_chips = self.base.nominal > 0 and self.base.nominal or nil,
+                    bonus_chips = (self.ability.bonus + (self.ability.perma_bonus or 0)) > 0 and (self.ability.bonus + (self.ability.perma_bonus or 0)) or nil,'''
+position = "after"
+payload = '''bonus_mult = (self.ability.perma_mult and self.ability.perma_mult > 0) or nil,'''
+match_indent = true
+# Perma mult display 2
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''if specific_vars.bonus_chips then
+            localize{type = 'other', key = 'card_extra_chips', nodes = desc_nodes, vars = {specific_vars.bonus_chips}}
+		end'''
+position = "after"
+payload = '''if specific_vars.bonus_mult then
+	localize{type = 'other', key = 'card_extra_mult', nodes = desc_nodes, vars = {specific_vars.bonus_mult}}
+end'''
+match_indent = true
+# Perma mult return
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.debuff then return 0 end
+    if self.ability.set == 'Joker' then return 0 end
+    if self.ability.effect == "Lucky Card" then 
+        if pseudorandom('lucky_mult') < G.GAME.probabilities.normal/5 then
+            self.lucky_trigger = true
+            return self.ability.mult
+        else
+            return 0
+        end
+    else  
+        return self.ability.mult
+    end'''
+position = "at"
+payload = '''if self.debuff then return 0 end
+    if self.ability.set == 'Joker' then return 0 end
+    if self.ability.effect == "Lucky Card" then 
+        if pseudorandom('lucky_mult') < G.GAME.probabilities.normal/5 then
+            self.lucky_trigger = true
+            return self.ability.mult + (self.ability.perma_mult or 0)
+        else
+            return (self.ability.perma_mult or 0)
+        end
+    else  
+        return self.ability.mult + (self.ability.perma_mult or 0)
+    end'''
+match_indent = true
