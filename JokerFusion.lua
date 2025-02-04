@@ -476,9 +476,31 @@ SMODS.Joker {
 	calculate = function(self, card, context)
 		if context.joker_main then
 			-- Check if hand is not most played
-			if TODO then
-				if pseudorandom("fus_periodictablet") < G.GAME.probabilities.normal/card.ability.extra.chance then
-					-- TODO
+			local spawn_tarot = false
+			local times_played = (G.GAME.hands[context.scoring_name].played or 0)
+			for k, v in pairs(G.GAME.hands) do
+				if k ~= context.scoring_name and v.played >= times_played and v.visible then
+					spawn_tarot = true
+					break
+				end
+			end
+			if spawn_tarot then
+				if pseudorandom("fus_periodictablet") < G.GAME.probabilities.normal/card.ability.extra.chance and #G.consumeables.cards + G.GAME.consumeable_buffer < G.consumeables.config.card_limit then
+					G.GAME.consumeable_buffer = G.GAME.consumeable_buffer + 1
+					G.E_MANAGER:add_event(Event({
+						func = (function()
+							G.E_MANAGER:add_event(Event({
+								func = function() 
+									local card = create_card('Tarot',G.consumeables, nil, nil, nil, nil, nil, 'fus_periodictablet')
+									card:add_to_deck()
+									G.consumeables:emplace(card)
+									G.GAME.consumeable_buffer = 0
+									return true
+								end}))   
+								card_eval_status_text(context.blueprint_card or card, 'extra', nil, nil, nil, {message = localize('k_plus_tarot'), colour = G.C.PURPLE})                       
+							return true
+						end
+					)}))
 				end
 			end
 		end
@@ -487,6 +509,91 @@ SMODS.Joker {
  		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
  	end,
 }
+
+SMODS.Joker {
+	key = 'offthegrid',
+	loc_txt = {
+		name = 'Off the Grid',
+		text = {
+			"If the first discard of",
+			"the round is a single",
+			"enhanced card, that card",
+			"is destroyed, and all cards",
+			"in your deck with that",
+			"enhancement gain {C:chips}+#1#{} chips", 
+			"and {C:mult}+#2#{} mult"
+			
+		}
+	},
+	config = { extra = { chip_mod = 10, mult_mod = 5 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.chip_mod, card.ability.extra.mult_mod } }
+	end,
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 8,
+	calculate = function(self, card, context)
+		if context.discard and G.GAME.current_round.discards_used <= 0 and #context.full_hand == 1 and not context.blueprint then
+			if not context.other_card.debuff and context.other_card.ability and context.other_card.ability.effect then
+				local enhancement = context.other_card.ability.effect
+				for i, c in ipairs(G.playing_cards) do
+					if c.ability and c.ability.effect == enhancement then
+						c.ability.perma_bonus = c.ability.perma_bonus or 0
+						c.ability.perma_bonus = c.ability.perma_bonus + card.ability.extra.chip_mod
+						c.ability.perma_mult = c.ability.perma_mult or 0
+						c.ability.perma_mult = c.ability.perma_mult + card.ability.extra.mult_mod
+					end
+				end
+			end
+			return {
+				message = "Upgraded!",
+				colour = G.C.MULT,
+				delay = 0.45, 
+				remove = true,
+				card = self
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
+	key = 'bottomout',
+	loc_txt = {
+		name = 'Bottom Out',
+		text = {
+			"Halves all listed probabilities.", 
+			"(ex. 2 in 6 -> 1 in 6)"
+		}
+	},
+	config = { extra = {} }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = {} }
+	end,
+	rarity = 1,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 4,
+	add_to_deck = function(self, card, from_debuff)
+		for k, v in pairs(G.GAME.probabilities) do 
+			G.GAME.probabilities[k] = v/2
+		end
+	end,
+	remove_from_deck = function(self, card, from_debuff)
+		for k, v in pairs(G.GAME.probabilities) do 
+			G.GAME.probabilities[k] = v*2
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+-- Great Grimaldi
+-- "Shall I?"
 
 SMODS.Joker {
 	key = 'silvervine',
