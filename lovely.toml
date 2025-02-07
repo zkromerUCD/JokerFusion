@@ -291,3 +291,59 @@ payload = '''if self.debuff then return 0 end
         return self.ability.mult + (self.ability.perma_mult or 0)
     end'''
 match_indent = true
+
+# Playing card added jokers
+# Fix voucher
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = """if self.ability.name == 'Certificate' then
+                G.E_MANAGER:add_event(Event({
+                    func = function() 
+                        local _card = create_playing_card({
+                            front = pseudorandom_element(G.P_CARDS, pseudoseed('cert_fr')), 
+                            center = G.P_CENTERS.c_base}, G.hand, nil, nil, {G.C.SECONDARY_SET.Enhanced})"""
+position = "at"
+payload = """if self.ability.name == 'Certificate' then
+	local _card = create_playing_card({
+				front = pseudorandom_element(G.P_CARDS, pseudoseed('cert_fr')), 
+				center = G.P_CENTERS.c_base}, G.hand, nil, nil, {G.C.SECONDARY_SET.Enhanced})
+	G.E_MANAGER:add_event(Event({
+		func = function()"""
+match_indent = true
+# Fix marble joker
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = """if self.ability.name == 'Marble Joker' and not (context.blueprint_card or self).getting_sliced  then
+                G.E_MANAGER:add_event(Event({
+                    func = function() 
+                        local front = pseudorandom_element(G.P_CARDS, pseudoseed('marb_fr'))
+                        G.playing_card = (G.playing_card and G.playing_card + 1) or 1
+                        local card = Card(G.play.T.x + G.play.T.w/2, G.play.T.y, G.CARD_W, G.CARD_H, front, G.P_CENTERS.m_stone, {playing_card = G.playing_card})
+                        card:start_materialize({G.C.SECONDARY_SET.Enhanced})
+                        G.play:emplace(card)
+                        table.insert(G.playing_cards, card)
+                        return true
+                    end}))"""
+position = "at"
+payload = """if self.ability.name == 'Marble Joker' and not (context.blueprint_card or self).getting_sliced  then
+	local front = pseudorandom_element(G.P_CARDS, pseudoseed('marb_fr'))
+		G.playing_card = (G.playing_card and G.playing_card + 1) or 1
+		local _card = Card(G.play.T.x + G.play.T.w/2, G.play.T.y, G.CARD_W, G.CARD_H, front, G.P_CENTERS.m_stone, {playing_card = G.playing_card})
+	G.E_MANAGER:add_event(Event({
+		func = function() 
+			_card:start_materialize({G.C.SECONDARY_SET.Enhanced})
+			G.play:emplace(_card)
+			table.insert(G.playing_cards, _card)
+			return true
+		end}))"""
+match_indent = true
+# Fix voucher and marble pt 2
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = "playing_card_joker_effects({true})"
+position = "at"
+payload = "playing_card_joker_effects({_card})"
+match_indent = true
