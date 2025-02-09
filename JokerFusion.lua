@@ -134,8 +134,8 @@ SMODS.Joker {
 			"you play a hand of",
 			"different size. Resets when",
 			"you play two hands of the",
-			"same size.",
-			"Currently {X:mult,C:white}X#2# {} mult."
+			"same size",
+			"{C:inactive}(Currently {X:mult,C:white}X#2#{C:inactive} mult)"
 		}
 	},
 	config = { extra = {xmult_increment = 1.0, xmult = 1.0, base_xmult = 1.0 } }, 
@@ -256,7 +256,7 @@ SMODS.Joker {
 			"When a {C:attention}face{} card scores,",
 			"it is destroyed and this",
 			"joker gains {X:mult,C:white}X#2# {} Mult.",
-			"(Currently {X:mult,C:white}X#1# {} Mult)"
+			"{C:inactive}(Currently {X:mult,C:white}X#1#{C:inactive} Mult)"
 		}
 	},
 	config = { extra = { xmult = 1.0, xmult_increment = 0.25} }, 
@@ -363,7 +363,7 @@ SMODS.Joker {
 			"Each {C:attention}face{} card held",
 			"in has a #2# in #3# chance",
 			"to give this joker {C:mult}+#4#{} Mult",
-			"Currently {C:mult}#1#{} Mult."
+			"{C:inactive}(Currently {C:mult}#1#{C:inactive} Mult."
 		}
 	},
 	config = { extra = { mult = 0, mult_increment = 1, chance = 2 } }, 
@@ -592,6 +592,129 @@ SMODS.Joker {
  	end,
 }
 
+SMODS.Joker {
+	key = 'gatekeeper',
+	loc_txt = {
+		name = 'Gatekeeper',
+		text = {
+			"Whenever you add a card",
+			"to your deck, if it has",
+			"an enhancement, remove the",
+			"enhancement and give this",
+			"joker {C:mult}+#1#{} Mult",
+			"{C:inactive}(Currently {C:mult}+#2#{C:inactive} Mult)"
+		}
+	},
+	config = { extra = { mult_increment = 15, mult = 0 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.mult_increment, card.ability.extra.mult } }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.playing_card_added then
+			local enhanced = {}
+			local c = context.cards[1]
+			if c.config.center ~= G.P_CENTERS.c_base and not c.debuff and not c.vampired then 
+				enhanced[#enhanced+1] = c
+				c.vampired = true
+				c:set_ability(G.P_CENTERS.c_base, nil, true)
+				G.E_MANAGER:add_event(Event({
+					func = function()
+						c:juice_up()
+						c.vampired = nil
+						return true
+					end
+				})) 
+			end
+			if #enhanced > 0 then 
+				card.ability.extra.mult = card.ability.extra.mult + card.ability.extra.mult_increment*#enhanced
+				return {
+					message = localize{type='variable',key='a_mult',vars={card.ability.mult}},
+					colour = G.C.MULT,
+					card = card
+				}
+			end
+		elseif context.joker_main then
+			return {
+				mult_mod = card.ability.extra.mult,
+				message = localize { type = 'variable', key = 'a_mult', vars = { card.ability.extra.mult } }
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
+	key = 'voiceofthepeople',
+	loc_txt = {
+		name = 'Voice of the People',
+		text = {
+			"Retrigger all {C:attention}non-face{} cards."
+		}
+	},
+	config = { extra = {repetitions = 1} }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = {} }
+	end,
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 8,
+	calculate = function(self, card, context)
+		if context.cardarea == G.play and context.repetition and not context.repetition_only then
+			-- context.other_card is something that's used when either context.individual or context.repetition is true
+			-- It is each card 1 by 1, but in other cases, you'd need to iterate over the scoring hand to check which cards are there.
+			if not context.other_card:is_face() then
+				return {
+					message = 'Again!',
+					repetitions = card.ability.extra.repetitions,
+					-- The card the repetitions are applying to is context.other_card
+					card = context.other_card
+				}
+			end
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
+	key = 'grimaldi',
+	loc_txt = {
+		name = 'Great Grimaldi',
+		text = {
+			"{C:mult}#1#{} discards per round,",
+			"{C:attention}-#2#{} hand size, and",
+			"{C:chips}+#3#{} hands per round.",
+			" ",
+			"{C:inactive,E:1}\"Shall I?\""
+		}
+	},
+	config = { extra = { xmult = 1.25 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.xmult } }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+		badges[#badges+1] = create_badge("Circus of the Other", G.C.RED, G.C.BLACK, 1.2 )
+		badges[#badges+1] = create_badge("Actual historical dude", G.C.PURPLE, G.C.WHITE, 1.2 )
+
+ 	end,
+}
+
 -- Great Grimaldi
 -- "Shall I?"
 
@@ -624,7 +747,7 @@ SMODS.Joker {
 			}
 		end
 		
-		if context.buying_card and not context.retrigger_joker and not (context.card == card) then
+		if context.buying_card and not context.retrigger_joker and not context.blueprint and not (context.card == card) then
 			if context.card.ability.set == "Joker" then
 				card_eval_status_text(card, "extra", nil, nil, nil, { message = "Material Expended", colour = G.C.FILTER })
 				G.E_MANAGER:add_event(Event({
@@ -706,7 +829,7 @@ SMODS.Joker {
 	end,
 	
 	set_badges = function(self, card, badges)
- 		badges[#badges+1] = create_badge("Lord of Goldpoint", G.C.BLACK, G.C.RED, 1.2 )
+ 		badges[#badges+1] = create_badge("Lord of Goldpoint", G.C.BLACK, HEX("c9002fff"), 1.2 )
  	end,
 }
 
