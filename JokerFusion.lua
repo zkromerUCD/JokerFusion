@@ -696,16 +696,25 @@ SMODS.Joker {
 			"{C:inactive,E:1}\"Shall I?\""
 		}
 	},
-	config = { extra = { xmult = 1.25 } }, 
+	config = { extra = { discards = 0, hand_size_mod = 1, hands_mod = 6, prev_discards = 0 } }, 
 	loc_vars = function(self, info_queue, card)
-		return { vars = { card.ability.extra.xmult } }
+		return { vars = { card.ability.extra.discards, card.ability.extra.hand_size_mod, card.ability.extra.hands_mod } }
 	end,
-	rarity = 2,
+	rarity = 4,
 	atlas = 'Gino',
 	pos = { x = 0, y = 0 },
-	cost = 6,
-	calculate = function(self, card, context)
-		
+	cost = 20,
+	add_to_deck = function(self, card, from_debuff)
+		card.ability.extra.prev_discards = G.GAME.round_resets.discards
+		G.GAME.round_resets.discards = card.ability.extra.discards
+		G.GAME.round_resets.hands = G.GAME.round_resets.hands + card.ability.extra.hands_mod
+		G.hand:change_size(-card.ability.extra.hand_size_mod)
+	end,
+	remove_from_deck = function(self, card, from_debuff)
+		local diff = G.GAME.round_resets.discards - card.ability.extra.discards
+		G.GAME.round_resets.discards = diff + card.ability.extra.prev_discards
+		G.GAME.round_resets.hands = G.GAME.round_resets.hands - card.ability.extra.hands_mod
+		G.hand:change_size(card.ability.extra.hand_size_mod)
 	end,
 	set_badges = function(self, card, badges)
  		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
