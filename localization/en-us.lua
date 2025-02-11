@@ -11,6 +11,11 @@ return {
                     "{C:mult}+#1#{} extra mult",
                 },
             },
+			card_extra_xmult={
+                text={
+                    "{X:mult,C:white}X#1#{} mult",
+                },
+            },
 		},
         Planet={},
         Spectral={},
