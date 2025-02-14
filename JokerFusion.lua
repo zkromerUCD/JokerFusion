@@ -724,8 +724,43 @@ SMODS.Joker {
  	end,
 }
 
--- Great Grimaldi
--- "Shall I?"
+SMODS.Joker {
+	key = 'stickercollector',
+	loc_txt = {
+		name = 'Sticker Collector',
+		text = {
+			-- This is not the effect listed on discord, but Aaron told me to do this instead
+			"Removes seals from scored cards",
+			"and gives this joker {X:mult,C:white}X#1#{} Mult",
+			"{C:deactivated}(Currently {X:mult,C:white}X#2#{C:deactivated} Mult{}"
+		}
+	},
+	config = { extra = { xmult_increment = 0.25, xmult = 1 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.xmult_increment, card.ability.extra.xmult } }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.individual and context.cardarea == G.play and not context.blueprint then
+			if context.other_card.seal then
+				card.ability.extra.xmult = card.ability.extra.xmult + card.ability.extra.xmult_increment
+				context.other_card:set_seal(nil)
+				card_eval_status_text(card, "extra", nil, nil, nil, { message = localize('k_upgrade_ex'), colour = G.C.MULT })
+			end
+		elseif context.joker_main then
+			return {
+				message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
+				Xmult_mod = card.ability.extra.xmult
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
 
 SMODS.Joker {
 	key = 'silvervine',
