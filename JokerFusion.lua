@@ -763,6 +763,40 @@ SMODS.Joker {
 }
 
 SMODS.Joker {
+	key = 'luckysevens',
+	loc_txt = {
+		name = 'Lucky Sevens',
+		text = {
+			"Whenever you score a {C:attention}7{}",
+			"that {C:green}sucessfully{} triggers a {C:attention}Lucky{}", 
+			"card effect, {X:mult,C:white}X#1#{} mult"
+		}
+	},
+	config = { extra = { xmult = 2 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.xmult } }
+	end,
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 8,
+	calculate = function(self, card, context)
+		if context.individual and context.other_card.lucky_trigger and not context.blueprint then
+			if context.other_card:get_id() == 7 then
+				card_eval_status_text(card, "extra", nil, nil, nil, { message = "Lucky!!!", colour = G.C.FILTER })
+				return {
+					message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
+					x_mult = card.ability.extra.xmult
+				}
+			end
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
+SMODS.Joker {
 	key = 'silvervine',
 	loc_txt = {
 		name = 'Silver',
