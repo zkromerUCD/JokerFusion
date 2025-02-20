@@ -796,6 +796,83 @@ SMODS.Joker {
  	end,
 }
 
+-- X2.0 Mult. -0.25 Mult whenever you play a card with Hearts. Suit changes every round.
+SMODS.Joker {
+	key = 'stalepopcorn',
+	loc_txt = {
+		name = 'Stale Popcorn',
+		text = {
+			"{X:mult,C:white}X#1#{} Mult, looses {X:mult,C:white}X#2#{}",
+			"whenever you play a {V:1}#3#{} card,",
+			"suit changes every round"
+		}
+	},
+	config = { extra = { xmult = 2, xmult_penalty = 0.25 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { 
+			card.ability.extra.xmult,
+			card.ability.extra.xmult_penalty,
+			localize(G.GAME.current_round.stalepopcorn_card.suit, 'suits_singular'),
+			colours = {G.C.SUITS[G.GAME.current_round.stalepopcorn_card.suit]}
+		} }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		if context.individual and context.cardarea == G.play and not context.blueprint then
+			if not context.other_card.debuff and context.other_card:is_suit(G.GAME.current_round.stalepopcorn_card.suit) then
+				if card.ability.extra.xmult - card.ability.extra.xmult_penalty <= 1 then
+					card.ability.extra.xmult = 1
+					card_eval_status_text(card, "extra", nil, nil, nil, { message = localize('k_eaten_ex'), colour = G.C.FILTER })
+					G.E_MANAGER:add_event(Event({
+                        func = function()
+                            play_sound('tarot1')
+                            card.T.r = -0.2
+                            card:juice_up(0.3, 0.4)
+                            card.states.drag.is = true
+                            card.children.center.pinch.x = true
+                            G.E_MANAGER:add_event(Event({trigger = 'after', delay = 0.3, blockable = false,
+                                func = function()
+                                        G.jokers:remove_card(card)
+                                        card:remove()
+                                        card = nil
+                                    return true; end})) 
+                            return true
+                        end
+                    }))
+				else
+					card.ability.extra.xmult = card.ability.extra.xmult - card.ability.extra.xmult_penalty
+					card_eval_status_text(card, "extra", nil, nil, nil, { message = localize{type='variable',key='a_xmult_minus',vars={card.ability.extra.xmult_penalty}}, colour = G.C.RED })
+				end
+			end
+		end
+		if context.joker_main and card.ability.extra.xmult > 1 then
+			return {
+				message = localize{type='variable', key='a_xmult', vars={card.ability.extra.xmult}},
+				Xmult_mod = card.ability.extra.xmult
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+-- Hook for Stale Popcorn init
+local igo = Game.init_game_object
+function Game:init_game_object()
+	local ret = igo(self)
+	ret.current_round.stalepopcorn_card = { suit = 'Hearts' }
+	return ret
+end
+-- Hook for Stale Popcorn end of round
+function SMODS.current_mod.reset_game_globals(run_start)
+	-- The suit changes every round, so we use reset_game_globals to choose a suit.
+	G.GAME.current_round.stalepopcorn_card = { suit = 'Hearts' }
+	G.GAME.current_round.stalepopcorn_card.suit = pseudorandom_element({'Hearts', 'Spades', 'Diamonds', 'Clubs'}, pseudoseed('fus_stalepopcorn' .. G.GAME.round_resets.ante))
+end
+
 SMODS.Joker {
 	key = 'silvervine',
 	loc_txt = {
