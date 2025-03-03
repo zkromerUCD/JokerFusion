@@ -102,6 +102,7 @@ SMODS.Sound({
 --[[
 SMODS.Joker {
 	key = 'benchplayer',
+	blueprint_compat = false,
 	loc_txt = {
 		name = 'Bench Player',
 		text = {
@@ -127,6 +128,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'handbelisk',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Handbelisk',
 		text = {
@@ -156,7 +158,7 @@ SMODS.Joker {
 		
 		if context.joker_main then
 			local l = #context.scoring_hand
-			if G.GAME.handbelisk_lengths_played[l] == true then
+			if G.GAME.handbelisk_lengths_played[l] == true and not context.blueprint then
 				-- Reset xmult if same handlength Played and reset array
 				card.ability.extra.xmult = card.ability.extra.base_xmult
 				G.GAME.handbelisk_lengths_played = {false, false, false, false, false}
@@ -182,6 +184,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'flubonacci',
+	blueprint_compat = false,
 	loc_txt = {
 		name = 'Flubonacci',
 		text = {
@@ -194,7 +197,7 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 6,
 	calculate = function(self, card, context)
-		if context.after then
+		if context.after and not context.blueprint then
 			for i, c in ipairs(context.scoring_hand) do
 				-- TODO: Add case for rankless and suitless cards (i.e. stone cards)
 				local rank = pseudorandom_element({'2','3','4','5','6','7','8','9','T','J','Q','K','A'}, pseudoseed('flubonacci'))
@@ -220,6 +223,7 @@ end
 if wet_mime_exists then
 	SMODS.Joker {
 		key = 'wet_mime',
+		blueprint_compat = false,
 		loc_txt = {
 			name = 'Wet Mime',
 			text = {
@@ -250,6 +254,7 @@ end
 
 SMODS.Joker {
 	key = 'regicide',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Regicide',
 		text = {
@@ -287,6 +292,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'bench_player',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Bench Player',
 		text = {
@@ -320,11 +326,114 @@ SMODS.Joker {
  	end,
 }
 
+function table_to_string(tbl)
+    local i = 0
+	local result = "{"
+    for k, v in pairs(tbl) do
+        -- Check the key type (ignore any numerical keys - assume its an array)
+        if type(k) == "string" then
+            result = result.."[\""..k.."\"]".."="
+        else
+			result = result.."[\""..tostring(k).."\"]".."="
+		end
+		i = i + 1
+		if i == 15 then
+			i = 0
+			result = result.."\n"
+		end
+    end
+    -- Remove leading commas from the result
+    if result ~= "" then
+        result = result:sub(1, result:len()-1)
+    end
+    return result.."}"
+end
+
 -- Missingno
 -- TODO: This one will be hard AF to implement
+-- TODO: 
+--G.P_CENTER_POOLS.Joker
+SMODS.Joker {
+	key = 'missingno',
+	blueprint_compat = false, -- ??? See if this is actually true
+	loc_txt = {
+		name = 'Missingno',
+		text = {
+			"Copies the ability of a {C:green}random{} {C:attention}joker{}.",
+			"Joker changes {C:attention}every hand{}.",
+			"{C:inactive}(Currently {C:attention}#1#{C:inactive}.)"
+		}
+	},
+	config = { extra = { joker = G.P_CENTER_POOLS.Joker[1] } }, 
+	loc_vars = function(self, info_queue, card)
+		local var1 = nil
+		if card.ability.extra.joker.key then
+			var1 = G.localization["descriptions"]["Joker"][card.ability.extra.joker.key].name
+		else
+			var1 = card.ability.extra.joker.ability.name
+			-- var1 = G.localization["descriptions"]["Joker"][card.ability.extra.joker.center.key]
+		end
+		-- return { vars = { table_to_string(G.P_CENTERS[card.ability.extra.joker.key])}}
+		return { vars = { var1 or "Joker" } }
+	end,
+	rarity = 1,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	get_joker = function(self)
+		-- TODO: Mark all cards in this mod as either compatible or non-compatible with blueprint;
+		-- and only choose cards that are compatible with blueprint via a 1000 iteration for loop,
+		-- Make sure random joker is also not missingno
+		-- if all loops provide incompatible cards, default to standard Joker (G.P_CENTER_POOLS.Joker[1])
+		for i=1,1000 do
+			local j = pseudorandom_element(G.P_CENTER_POOLS.Joker, pseudoseed('missingno'))
+			if j.blueprint_compat and j.unlocked then 
+				return Card(0, 0, 0, 0, nil, j, nil)
+			end
+		end
+		return Card(0, 0, 0, 0, nil, G.P_CENTER_POOLS.Joker[1], nil)
+
+	end,
+	calculate = function(self, card, context)
+		-- If a hand is getting played, determine next joker
+		new_joker = nil
+		if context.after and not context.retrigger_joker and not context.blueprint then
+			new_joker = self:get_joker()
+			new_joker.missingno = true
+		end
+		
+		if not context.blueprint then
+			context.blueprint = (context.blueprint and (context.blueprint + 1)) or 1
+			context.blueprint_card = context.blueprint_card or card
+			if context.blueprint > #G.jokers.cards + 1 then return end
+			--card.ability.extra.joker.debuff = true
+			local other_joker_ret = card.ability.extra.joker:calculate_joker(context)
+			--card.ability.extra.joker.debuff = true
+		end
+		
+		-- Switch to next joker if a new joker has been specified
+		if new_joker then
+			card.ability.extra.joker:remove()
+			card.ability.extra.joker = new_joker
+		end
+		
+		if other_joker_ret then 
+			other_joker_ret.card = context.blueprint_card or self
+			other_joker_ret.colour = G.C.BLUE
+			return other_joker_ret
+		end
+	end,
+	add_to_deck = function(self, card, from_debuff)
+		card.ability.extra.joker = self:get_joker()
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
 
 SMODS.Joker {
 	key = 'smearedpainting',
+	blueprint_compat = false,
 	loc_txt = {
 		name = 'Smeared Painting',
 		text = {
@@ -338,7 +447,7 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 8,
 	calculate = function(self, card, context)
-		if context.after and context.scoring_hand then
+		if context.after and context.scoring_hand and not context.blueprint then
 			local suit_prefix = string.sub(context.scoring_hand[1].base.suit, 1, 1)..'_'
 			local high_ranks = {[10] = 'T', [11] = 'J', [12] = 'Q', [13] = 'K', [14] = 'A'}
 			for i, c in ipairs(context.scoring_hand) do
@@ -357,13 +466,14 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'metermaid',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Meter Maid',
 		text = {
 			"Each {C:attention}face{} card held",
 			"in has a #2# in #3# chance",
 			"to give this joker {C:mult}+#4#{} Mult",
-			"{C:inactive}(Currently {C:mult}#1#{C:inactive} Mult."
+			"{C:inactive}(Currently {C:mult}#1#{C:inactive} Mult.)"
 		}
 	},
 	config = { extra = { mult = 0, mult_increment = 1, chance = 2 } }, 
@@ -415,6 +525,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'polaroid',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Polaroid',
 		text = {
@@ -454,6 +565,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'periodictablet',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Periodic Tablet',
 		text = {
@@ -512,6 +624,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'offthegrid',
+	blueprint_compat = false,
 	loc_txt = {
 		name = 'Off the Grid',
 		text = {
@@ -562,6 +675,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'bottomout',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Bottom Out',
 		text = {
@@ -594,6 +708,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'gatekeeper',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Gatekeeper',
 		text = {
@@ -614,7 +729,7 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 6,
 	calculate = function(self, card, context)
-		if context.playing_card_added then
+		if context.playing_card_added and not context.blueprint then
 			local enhanced = {}
 			local c = context.cards[1]
 			if c.config.center ~= G.P_CENTERS.c_base and not c.debuff and not c.vampired then 
@@ -651,6 +766,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'voiceofthepeople',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Voice of the People',
 		text = {
@@ -686,6 +802,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'grimaldi',
+	blueprint_compat = false, --??? maybe idk
 	loc_txt = {
 		name = 'Great Grimaldi',
 		text = {
@@ -726,6 +843,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'stickercollector',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Sticker Collector',
 		text = {
@@ -764,6 +882,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'luckysevens',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Lucky Sevens',
 		text = {
@@ -781,7 +900,7 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 8,
 	calculate = function(self, card, context)
-		if context.individual and context.other_card.lucky_trigger and not context.blueprint then
+		if context.individual and context.other_card.lucky_trigger then
 			if context.other_card:get_id() == 7 then
 				card_eval_status_text(card, "extra", nil, nil, nil, { message = "Lucky!!!", colour = G.C.FILTER })
 				return {
@@ -799,6 +918,7 @@ SMODS.Joker {
 -- X2.0 Mult. -0.25 Mult whenever you play a card with Hearts. Suit changes every round.
 SMODS.Joker {
 	key = 'stalepopcorn',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Stale Popcorn',
 		text = {
@@ -859,22 +979,11 @@ SMODS.Joker {
  		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
  	end,
 }
--- Hook for Stale Popcorn init
-local igo = Game.init_game_object
-function Game:init_game_object()
-	local ret = igo(self)
-	ret.current_round.stalepopcorn_card = { suit = 'Hearts' }
-	return ret
-end
--- Hook for Stale Popcorn end of round
-function SMODS.current_mod.reset_game_globals(run_start)
-	-- The suit changes every round, so we use reset_game_globals to choose a suit.
-	G.GAME.current_round.stalepopcorn_card = { suit = 'Hearts' }
-	G.GAME.current_round.stalepopcorn_card.suit = pseudorandom_element({'Hearts', 'Spades', 'Diamonds', 'Clubs'}, pseudoseed('fus_stalepopcorn' .. G.GAME.round_resets.ante))
-end
+
 
 SMODS.Joker {
 	key = 'silvervine',
+	blueprint_compat = true,
 	loc_txt = {
 		name = 'Silver',
 		text = {
@@ -993,6 +1102,7 @@ SMODS.Joker {
 
 SMODS.Joker {
 	key = 'gino',
+	blueprint_compat = false, --??? Maybe idk
 	loc_txt = {
 		name = 'Gino Fratelli',
 		text = {
@@ -1035,4 +1145,20 @@ SMODS.Joker {
  	end,
 }
 
-
+-- Hook for game init
+-- Relevant Jokers:
+--   1) Stale Popcorn
+local igo = Game.init_game_object
+function Game:init_game_object()
+	local ret = igo(self)
+	ret.current_round.stalepopcorn_card = { suit = 'Hearts' }
+	return ret
+end
+-- Hook for end of round
+-- Relevant Jokers:
+--   1) Stale Popcorn
+function SMODS.current_mod.reset_game_globals(run_start)
+	-- The suit changes every round, so we use reset_game_globals to choose a suit.
+	G.GAME.current_round.stalepopcorn_card = { suit = 'Hearts' }
+	G.GAME.current_round.stalepopcorn_card.suit = pseudorandom_element({'Hearts', 'Spades', 'Diamonds', 'Clubs'}, pseudoseed('fus_stalepopcorn' .. G.GAME.round_resets.ante))
+end
