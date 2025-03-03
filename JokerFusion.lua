@@ -350,9 +350,6 @@ function table_to_string(tbl)
 end
 
 -- Missingno
--- TODO: This one will be hard AF to implement
--- TODO: 
---G.P_CENTER_POOLS.Joker
 SMODS.Joker {
 	key = 'missingno',
 	blueprint_compat = false, -- ??? See if this is actually true
@@ -915,7 +912,6 @@ SMODS.Joker {
  	end,
 }
 
--- X2.0 Mult. -0.25 Mult whenever you play a card with Hearts. Suit changes every round.
 SMODS.Joker {
 	key = 'stalepopcorn',
 	blueprint_compat = true,
@@ -980,6 +976,42 @@ SMODS.Joker {
  	end,
 }
 
+SMODS.Joker {
+	key = 'gymbro',
+	blueprint_compat = false,
+	loc_txt = {
+		name = 'Gym Bro',
+		text = {
+			"Played cards give {X:mult,C:white}X#1#{}",
+			"Mult if you have played a",
+			"card of the same {C:attention}rank{} this round."
+		}
+	},
+	config = { extra = { xmult = 1.25 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.xmult } }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 8,
+	calculate = function(self, card, context)
+		if context.individual and context.cardarea == G.play and not context.blueprint then
+			local bonus = 1
+			if G.GAME.current_round.gymbro_card.ranks[context.other_card:get_id()] then
+				bonus = card.ability.extra.xmult
+			end
+			G.GAME.current_round.gymbro_card.ranks[context.other_card:get_id()] = true
+			return {
+				message = localize{type='variable', key='a_xmult', vars={bonus}},
+				x_mult = bonus
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
 
 SMODS.Joker {
 	key = 'silvervine',
@@ -1148,17 +1180,21 @@ SMODS.Joker {
 -- Hook for game init
 -- Relevant Jokers:
 --   1) Stale Popcorn
+--   2) Gym Bro
 local igo = Game.init_game_object
 function Game:init_game_object()
 	local ret = igo(self)
 	ret.current_round.stalepopcorn_card = { suit = 'Hearts' }
+	ret.current_round.gymbro_card = {ranks = {false, false, false, false, false, false, false, false, false, false, false, false, false, false}}
 	return ret
 end
 -- Hook for end of round
 -- Relevant Jokers:
 --   1) Stale Popcorn
+--   2) Gym Bro
 function SMODS.current_mod.reset_game_globals(run_start)
 	-- The suit changes every round, so we use reset_game_globals to choose a suit.
 	G.GAME.current_round.stalepopcorn_card = { suit = 'Hearts' }
 	G.GAME.current_round.stalepopcorn_card.suit = pseudorandom_element({'Hearts', 'Spades', 'Diamonds', 'Clubs'}, pseudoseed('fus_stalepopcorn' .. G.GAME.round_resets.ante))
+	G.GAME.current_round.gymbro_card.ranks = {false, false, false, false, false, false, false, false, false, false, false, false, false, false}
 end
