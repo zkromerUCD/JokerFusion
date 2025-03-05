@@ -347,3 +347,15 @@ pattern = "playing_card_joker_effects({true})"
 position = "at"
 payload = "playing_card_joker_effects({_card})"
 match_indent = true
+
+# Grave Robber global variables
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = "function Card:remove_from_deck(from_debuff)"
+position = "after"
+payload = '''	if not from_debuff and self.added_to_deck and self.ability.set == "Joker" then
+		G.GAME.global_vars.graverobber_card.destroyed = G.GAME.global_vars.graverobber_card.destroyed + 1
+	end
+	'''
+match_indent = true

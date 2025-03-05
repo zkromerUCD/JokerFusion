@@ -1013,6 +1013,59 @@ SMODS.Joker {
  	end,
 }
 
+-- TODO
+SMODS.Joker {
+	key = 'graverobber',
+	blueprint_compat = true,
+	loc_txt = {
+		name = 'Grave Robber',
+		text = {
+			"When Small or Big Blind is selected",
+			"destroy the leftmost joker.",
+			"This joker gains {C:mult}+#1#{} mult for each",
+			"joker destroyed this run",
+			"{C:deactivated}(Currently {C:mult}+#2#{C:deactivated} mult)"
+		}
+	},
+	config = { extra = { mult_increment = 25 } }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.mult_increment, card.ability.extra.mult_increment * G.GAME.global_vars.graverobber_card.destroyed } }
+	end,
+	rarity = 2,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 6,
+	calculate = function(self, card, context)
+		-- TODO: Destroying jokers
+		
+		if context.setting_blind and not context.repetition and not context.blueprint then
+			if G.GAME.round_resets.blind.key == "bl_small" or G.GAME.round_resets.blind.key == "bl_big" then
+				local other_joker = G.jokers.cards[1]
+				if not other_joker.ability.eternal and other_joker ~= card then
+					card_eval_status_text(card, "extra", nil, nil, nil, { message = localize{type='variable', key='a_mult', vars={card.ability.extra.mult_increment}}, colour = G.C.MULT })
+					G.E_MANAGER:add_event(Event({
+						func = function()
+							G.jokers:remove_card(other_joker)
+							other_joker:start_dissolve()
+							return true
+						end
+					}))
+				end
+			end
+		end
+		
+		if context.joker_main then
+			return {
+				message = localize{type='variable', key='a_mult', vars={card.ability.extra.mult_increment * G.GAME.global_vars.graverobber_card.destroyed}},
+				mult_mod = card.ability.extra.mult_increment * G.GAME.global_vars.graverobber_card.destroyed
+			}
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
 SMODS.Joker {
 	key = 'silvervine',
 	blueprint_compat = true,
@@ -1181,11 +1234,15 @@ SMODS.Joker {
 -- Relevant Jokers:
 --   1) Stale Popcorn
 --   2) Gym Bro
+--   3) Grave Robber
 local igo = Game.init_game_object
 function Game:init_game_object()
 	local ret = igo(self)
 	ret.current_round.stalepopcorn_card = { suit = 'Hearts' }
 	ret.current_round.gymbro_card = {ranks = {false, false, false, false, false, false, false, false, false, false, false, false, false, false}}
+	if not ret.global_vars then ret.global_vars = {} end
+	ret.global_vars.graverobber_card = {}
+	ret.global_vars.graverobber_card.destroyed = 0
 	return ret
 end
 -- Hook for end of round
