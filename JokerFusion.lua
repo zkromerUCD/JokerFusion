@@ -1,3 +1,4 @@
+-- TODO: Modify Off the Grid (perma mult) to use built in instead of custom perma mult
 -- ###################### ATLASES ######################
 SMODS.Atlas {
 	key = "JokerFusion",
@@ -1013,7 +1014,7 @@ SMODS.Joker {
  	end,
 }
 
--- TODO
+-- TODO (I think it is finished; check at some point)
 SMODS.Joker {
 	key = 'graverobber',
 	blueprint_compat = true,
@@ -1036,8 +1037,6 @@ SMODS.Joker {
 	pos = { x = 0, y = 0 },
 	cost = 6,
 	calculate = function(self, card, context)
-		-- TODO: Destroying jokers
-		
 		if context.setting_blind and not context.repetition and not context.blueprint then
 			if G.GAME.round_resets.blind.key == "bl_small" or G.GAME.round_resets.blind.key == "bl_big" then
 				local other_joker = G.jokers.cards[1]
@@ -1065,6 +1064,61 @@ SMODS.Joker {
  		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
  	end,
 }
+
+SMODS.Joker {
+	key = 'seeing-sixes',
+	blueprint_compat = false,
+	loc_txt = {
+		name = 'Seeing Sixes',
+		text = {
+			"If the first hand of the round", 
+			"is a single {C:attention}6{}, convert", 
+			"{C:attention}#1#{} random cards in your hand into",
+			"a copy of it."
+		}
+	},
+	config = { extra = {num_cards = 2} }, 
+	loc_vars = function(self, info_queue, card)
+		return { vars = { card.ability.extra.num_cards } }
+	end,
+	rarity = 3,
+	atlas = 'Gino',
+	pos = { x = 0, y = 0 },
+	cost = 9,
+	calculate = function(self, card, context)
+		if context.after and not context.blueprint and #context.full_hand == 1 and context.full_hand[1]:get_id() == 6 then
+			local other_card = context.full_hand[1]
+			-- Get the cards to dupe
+			local temp_hand = {}
+			local duped_cards = {}
+            for k, v in ipairs(G.hand.cards) do temp_hand[#temp_hand+1] = v end
+            table.sort(temp_hand, function (a, b) return not a.playing_card or not b.playing_card or a.playing_card < b.playing_card end)
+            pseudoshuffle(temp_hand, pseudoseed('seeing-sixes'))
+			local n = card.ability.extra.num_cards
+			if n > #temp_hand then
+				n = #temp_hand
+			end
+            for i = 1, n do duped_cards[#duped_cards+1] = temp_hand[i] end
+			
+			-- Dupe the card
+			local suit_prefix = string.sub(other_card.base.suit, 1, 1)..'_'
+			for k, v in ipairs(duped_cards) do
+				-- Set suit and rank (6)
+				v:set_base(G.P_CARDS[suit_prefix..'6'])
+				-- Set seal
+				v:set_seal(other_card.seal)
+				-- Set enhancement
+				v:set_ability(other_card.config.center)
+				-- Set edition
+				v:set_edition(other_card.edition)
+			end
+		end
+	end,
+	set_badges = function(self, card, badges)
+ 		badges[#badges+1] = create_badge("Fusion", G.C.PURPLE, G.C.WHITE, 1.2 )
+ 	end,
+}
+
 
 SMODS.Joker {
 	key = 'silvervine',
